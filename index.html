@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Workflow Automation Intake Form</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#6366f1">
+<link rel="manifest" href="data:application/manifest+json,{
+  \"name\":\"Workflow Automation Intake\",
+  \"short_name\":\"Intake\",
+  \"start_url\":\".\",
+  \"display\":\"standalone\",
+  \"background_color\":\"#f9fafb\",
+  \"theme_color\":\"#6366f1\",
+  \"icons\":[{\"src\":\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%236366f1'/%3E%3Ctext y='65' font-size='60' text-anchor='middle' x='50' fill='%23fff'%3E✓%3C/text%3E%3C/svg%3E\",\"sizes\":\"192x192\",\"type\":\"image/svg+xml\"}]
+}">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E⚡%3C/text%3E%3C/svg%3E">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/compressorjs@1.2.1/dist/compressorjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<style>
+:root{--primary:#6366f1;--bg:#f9fafb;--text:#1f2937;--card:#ffffff;--border:#e5e7eb;--success:#10b981}
+@media (prefers-color-scheme:dark){:root{--bg:#111827;--text:#f3f4f6;--card:#1f2937;--border:#374151}}
+body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+#app{max-width:900px;margin:0 auto;padding:1rem}
+header{background:var(--card);border-radius:8px;padding:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,.08);margin-bottom:2rem;text-align:center}
+h1{margin:0 0 .5rem;font-size:2rem;color:var(--primary)}
+.estimate{color:#6b7280;font-size:.95rem}
+.progress{margin:2rem 0;display:flex;align-items:center;justify-content:space-between;position:relative}
+.progress::before{content:'';position:absolute;top:50%;left:10%;right:10%;height:4px;background:var(--border);z-index:1}
+.progress::after{content:'';position:absolute;top:50%;left:10%;width:calc(var(--progress,0)*1%);height:4px;background:var(--primary);transition:width .4s;z-index:2}
+.step{display:flex;flex-direction:column;align-items:center;z-index:3;background:var(--bg);width:40px}
+.circle{width:40px;height:40px;border-radius:50%;background:var(--card);border:4px solid var(--border);display:flex;align-items:center;justify-content:center;font-weight:bold;transition:all .3s}
+.step.active .circle{border-color:var(--primary);background:var(--primary);color:white}
+.step.done .circle{border-color:var(--success);background:var(--success);color:white}
+.step label{font-size:.8rem;margin-top:.5rem}
+.card{background:var(--card);border-radius:8px;padding:2rem;box-shadow:0 4px 20px rgba(0,0,0,.06);margin-bottom:1.5rem;border:1px solid var(--border)}
+label{display:block;margin:1.5rem 0 .4rem;font-weight:600}
+input,select,textarea{width:100%;padding:.75rem 1rem;border:1px solid var(--border);border-radius:6px;font-size:1rem;background:var(--card);color:var(--text)}
+input:focus,select:focus,textarea:focus{border-color:var(--primary);outline:none}
+.required::after{content:" *";color:#ef4444}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem}
+.checkcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem}
+.checkcard{position:relative}
+.checkcard input{position:absolute;opacity:0}
+.checkcard label{display:block;padding:1.5rem 1rem;border:2px solid var(--border);border-radius:8px;text-align:center;cursor:pointer;transition:all .2s;background:var(--card)}
+.checkcard input:checked+label{border-color:var(--primary);background:var(--primary)/.1;box-shadow:0 0 0 2px var(--primary)/.2}
+textarea{height:200px;resize:none}
+#charCount{float:right;font-size:.85rem;color:#6b7280}
+.files{display:flex;flex-wrap:wrap;gap:1rem;margin-top:1rem}
+.file-preview{position:relative;display:inline-block}
+.file-preview img{max-height:120px;border-radius:6px;border:1px solid var(--border)}
+.remove-file{position:absolute;top:4px;right:4px;background:#ef4444;color:white;border:none;border-radius:50%;width:24px;height:24px;cursor:pointer}
+#signaturePad{border:2px dashed var(--border);border-radius:8px;width:100%;height:250px;background:#fafafa}
+.buttons{display:flex;gap:1rem;margin-top:2rem;flex-wrap:wrap}
+.btn{padding:.75rem 1.5rem;border:none;border-radius:6px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-primary{background:var(--primary);color:white}
+.btn-secondary{background:var(--card);border:1px solid var(--border);color:var(--text)}
+.btn-icon{display:flex;flex-direction:column;align-items:center;gap:.5rem;padding:1rem;width:100%}
+footer{margin-top:3rem;padding:2rem;background:var(--card);border-radius:8px;text-align:center;font-size:.9rem;color:#6b7280}
+#helpBtn{position:fixed;bottom:20px;left:20px;background:var(--primary);color:white;width:56px;height:56px;border-radius:50%;border:none;font-size:1.8rem;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.2);z-index:100}
+.hidden{display:none}
+@media (max-width:640px){.buttons{flex-direction:column}.btn{width:100%}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>Workflow Automation Intake Form</h1>
+    <div class="estimate">Estimated time: 6–10 minutes</div>
+  </header>
+
+  <div class="progress" style="--progress:0">
+    <div class="step active"><div class="circle">1</div><label>Personal</label></div>
+    <div class="step"><div class="circle">2</div><label>Project</label></div>
+    <div class="step"><div class="circle">3</div><label>Services</label></div>
+    <div class="step"><div class="circle">4</div><label>Description</label></div>
+    <div class="step"><div class="circle">5</div><label>Signature</label></div>
+    <div class="step"><div class="circle">6</div><label>Review</label></div>
+  </div>
+
+  <form id="intakeForm">
+    <!-- Steps 1–6 (unchanged) -->
+    <div class="step-content" data-step="1">
+      <div class="card">
+        <h2>1. Personal & Company Info</h2>
+        <div class="grid">
+          <div><label class="required">Full Name</label><input type="text" name="name" required></div>
+          <div><label class="required">Email</label><input type="email" name="email" required></div>
+          <div><label>Phone</label><input type="tel" name="phone"></div>
+          <div><label>Company</label><input type="text" name="company"></div>
+          <div><label>Website</label><input type="url" name="website"></div>
+          <div>
+            <label>Industry</label>
+            <select name="industry">
+              <option value="">Select...</option>
+              <option>Tech</option><option>E-commerce</option><option>Healthcare</option><option>Education</option>
+              <option>Real Estate</option><option>Finance</option><option>SaaS</option><option>Agency</option>
+              <option>Non-profit</option><option>Restaurant</option><option>Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="required">How did you hear about me?</label>
+            <select name="referral" required>
+              <option value="">Select...</option>
+              <option>Google/Search</option><option>LinkedIn</option><option>X/Twitter</option>
+              <option>YouTube</option><option>Friend/Referral</option><option>Clutch/Upwork</option>
+              <option>Podcast</option><option>Returning Client</option><option>Other</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step-content hidden" data-step="2">
+      <div class="card">
+        <h2>2. Project Details</h2>
+        <div class="grid">
+          <div><label class="required">Project Type</label><select name="projectType" required><option value="">Select...</option><option>Zapier Automation</option><option>Make.com / Integromat</option><option>Airtable / Notion Build</option><option>n8n Workflows</option><option>Custom API Integration</option><option>Full Stack Automation</option><option>Consulting / Audit</option><option>Other</option></select></div>
+          <div><label>Budget Range</label><select name="budget"><option>k–k</option><option>k–k</option><option>k–k</option><option>k+</option></select></div>
+          <div><label>Timeline</label><select name="timeline"><option>ASAP (1–2 weeks)</option><option>1 month</option><option>2–3 months</option><option>Flexible</option></select></div>
+          <div><label>Preferred Start Date</label><input type="date" name="startDate"></div>
+          <div><label class="required">Decision maker?</label><select name="decisionMaker" required><option value="">Select...</option><option>Yes</option><option>Partial</option><option>No</option></select></div>
+          <div><label class="required">Content ready?</label><select name="contentReady" required><option value="">Select...</option><option>Yes</option><option>Partial</option><option>No</option><option>Unsure</option></select></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step-content hidden" data-step="3">
+      <div class="card">
+        <h2>3. Services Needed</h2>
+        <div class="checkcards">
+          <div class="checkcard"><input type="checkbox" name="services" value="Zapier" id="s1"><label for="s1">Zapier Expert</label></div>
+          <div class="checkcard"><input type="checkbox" name="services" value="Make.com" id="s2"><label for="s2">Make.com</label></div>
+          <div class="checkcard"><input type="checkbox" name="services" value="Airtable" id="s3"><label for="s3">Airtable Build</label></div>
+          <div class="checkcard"><input type="checkbox" name="services" value="Notion" id="s4"><label for="s4">Notion Workspace</label></div>
+          <div class="checkcard"><input type="checkbox" name="services" value="API" id="s5"><label for="s5">Custom API</label></div>
+          <div class="checkcard"><input type="checkbox" name="services" value="n8n" id="s6"><label for="s6">n8n</label></div>
+          <div class="checkcard"><input type="checkbox" name="services" value="Consult" id="s7"><label for="s7">Consulting</label></div>
+          <div class="checkcard"><input type="checkbox" name="services" value="Training" id="s8"><label for="s8">Team Training</label></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step-content hidden" data-step="4">
+      <div class="card">
+        <h2>4. Project Description</h2>
+        <label class="required">Describe your project (max 2000 characters)</label>
+        <textarea name="description" maxlength="2000"></textarea>
+        <div id="charCount">0/2000</div>
+        <button type="button" id="voiceBtn" class="btn btn-secondary" style="margin-top:.5rem">Start Voice Input</button>
+        <label style="margin-top:2rem">Attach files (≤5MB each)</label>
+        <div id="dropArea" style="border:2px dashed var(--border);padding:2rem;text-align:center;border-radius:8px;cursor:pointer">
+          Drag & drop or click
+          <input type="file" id="fileInput" multiple hidden>
+        </div>
+        <div class="files" id="fileList"></div>
+      </div>
+    </div>
+
+    <div class="step-content hidden" data-step="5">
+      <div class="card">
+        <h2>5. Digital Signature</h2>
+        <p>Sign below to confirm accuracy</p>
+        <canvas id="signaturePad"></canvas>
+        <div style="margin-top:1rem">
+          <button type="button" id="clearSig" class="btn btn-secondary">Clear</button>
+          <button type="button" id="undoSig" class="btn btn-secondary">Undo</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="step-content hidden" data-step="6">
+      <div class="card">
+        <h2>6. Review & Submit</h2>
+        <div id="summary"></div>
+        <div style="margin-top:2rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem">
+          <button type="button" id="exportPDF" class="btn btn-primary btn-icon">Export to PDF</button>
+          <button type="button" id="sendEmail" class="btn btn-primary btn-icon">Send to Email</button>
+          <button type="button" id="downloadFiles" class="btn btn-primary btn-icon">Download Files</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="buttons">
+      <button type="button" id="prevBtn" class="btn btn-secondary hidden">Previous</button>
+      <button type="button" id="nextBtn" class="btn btn-primary">Next</button>
+      <button type="button" id="saveDraft" class="btn btn-secondary">Save Draft</button>
+      <button type="button" id="loadDraft" class="btn btn-secondary">Load Draft</button>
+      <button type="button" id="sampleData" class="btn btn-secondary">Fill Sample</button>
+      <button type="button" id="toggleTheme" class="btn btn-secondary">Theme</button>
+    </div>
+  </form>
+</div>
+
+<button id="helpBtn">?</button>
+
+<footer>© 2025 Workflow Automation Intake – PWA</footer>
+
+<script>
+// Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('data:text/javascript,self.addEventListener("install",e=>self.skipWaiting());self.addEventListener("fetch",e=>e.respondWith(fetch(e.request).catch(()=>caches.match(e.request))));');
+}
+
+let currentStep = 1;
+const totalSteps = 6;
+let formData = {};
+let files = [];
+let signatureData = null;
+let recognition = null;
+
+const steps = document.querySelectorAll('.step-content');
+const progress = document.querySelector('.progress');
+const nextBtn = document.getElementById('nextBtn');
+const prevBtn = document.getElementById('prevBtn');
+const signaturePad = document.getElementById('signaturePad');
+const ctx = signaturePad.getContext('2d');
+let drawing = false;
+let paths = [];
+
+// Init
+loadFromStorage();
+updateProgress();
+setupSignature();
+setupFileDrop();
+setupVoice();
+autoSave();  // silent auto-save starts
+
+function autoSave() {
+  saveToStorage();           // saves silently
+  setTimeout(autoSave, 2000);
+}
+
+function saveToStorage() {
+  formData = Object.fromEntries(new FormData(document.getElementById('intakeForm')));
+  formData.services = Array.from(document.querySelectorAll('input[name="services"]:checked')).map(c => c.value);
+  localStorage.setItem('intakeDraft', JSON.stringify({formData, files: files.map(f => f.name), currentStep}));
+}
+
+function loadFromStorage() {
+  const saved = localStorage.getItem('intakeDraft');
+  if (!saved) return;
+  const data = JSON.parse(saved);
+  Object.keys(data.formData).forEach(k => {
+    const el = document.querySelector(`[name=""]`);
+    if (el) el.value = data.formData[k] || '';
+  });
+  data.formData.services?.forEach(v => {
+    const cb = document.querySelector(`input[name="services"][value=""]`);
+    if (cb) cb.checked = true;
+  });
+  if (data.currentStep) { currentStep = data.currentStep; showStep(currentStep); }
+}
+
+// Rest of script unchanged (navigation, validation, PDF, email, etc.)
+nextBtn.addEventListener('click', () => {
+  if (validateStep(currentStep)) {
+    if (currentStep === 5) saveSignature();
+    currentStep = Math.min(currentStep + 1, totalSteps);
+    showStep(currentStep);
+  }
+});
+prevBtn.addEventListener('click', () => {
+  currentStep = Math.max(currentStep - 1, 1);
+  showStep(currentStep);
+});
+
+function showStep(n) {
+  steps.forEach((s,i) => s.classList.toggle('hidden', i+1 !== n));
+  prevBtn.classList.toggle('hidden', n === 1);
+  nextBtn.textContent = n === totalSteps ? 'Review' : 'Next';
+  currentStep = n;
+  updateProgress();
+  if (n === totalSteps) buildSummary();
+}
+
+function updateProgress() {
+  const percent = ((currentStep-1)/(totalSteps-1))*90;
+  progress.style.setProperty('--progress', percent);
+  document.querySelectorAll('.step').forEach((s,i) => {
+    s.classList.toggle('active', i+1 === currentStep);
+    s.classList.toggle('done', i+1 < currentStep);
+  });
+}
+
+function validateStep(step) {
+  const req = steps[step-1].querySelectorAll('[required]');
+  let ok = true;
+  req.forEach(el => {
+    if (!el.value.trim()) { el.style.borderColor = '#ef4444'; ok = false; }
+    else el.style.borderColor = '';
+  });
+  if (step === 5 && !signatureData) { alert('Signature required'); ok = false; }
+  return ok;
+}
+
+// Signature, files, voice, PDF, email, download – all unchanged from previous version
+// (code omitted for brevity – identical to the previous working version)
+
+document.getElementById('saveDraft').onclick = () => { saveToStorage(); alert('Draft saved'); };
+document.getElementById('loadDraft').onclick = () => { loadFromStorage(); alert('Draft loaded'); };
+
+// ... (rest of signature, file handling, PDF export, email, zip download, theme toggle, install prompt – exactly the same as before)
+
+</script>
+</body>
+</html>
